@@ -49,15 +49,11 @@ b_cache = dict()
 def get_b(n: int) -> np.ndarray:
     if b_cache.get(n) is not None:
         return np.copy(b_cache[n])
-    vec = np.arange(n).reshape(1, n)
-    a = np.ones(n) * 2
-    a[0] = 1
+    a = np.array([1] + [2] * (n - 1))
     a = np.sqrt(a / n)
-    aa = (2 * vec.reshape(n, 1) + 1)
-    bb = np.dot(aa, vec)
-    cc = bb * np.pi / 2 / n
-    c = np.cos(cc)
-    b = np.copy(c)
+    cos_coe = np.dot((2 * np.arange(n).reshape(n, 1) + 1), np.arange(n).reshape(1, n))
+    cos_coe_radius = cos_coe * np.pi / 2 / n
+    b = np.cos(cos_coe_radius)
     for i in range(n):
         b[i, :] = a * b[i, :]
     b_cache[n] = np.copy(b)

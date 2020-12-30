@@ -1,9 +1,9 @@
 import unittest
 
+import numpy as np
 from PIL import Image
 
 import utils
-import numpy as np
 
 
 class MyTestCase(unittest.TestCase):

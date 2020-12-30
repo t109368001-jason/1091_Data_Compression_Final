@@ -14,37 +14,53 @@ q = [
 ]
 
 
+def jpeg_level_offset(img: np.ndarray) -> np.ndarray:
+    level_offset = img - 128
+    return level_offset
+
+
+def ijpeg_level_offset(level_offset: np.ndarray) -> np.ndarray:
+    img = level_offset + 128
+    return img
+
+
+def jpeg_quantization(dct: np.ndarray, n: int) -> np.ndarray:
+    quantization = np.zeros(shape=dct.shape)
+    h, w = quantization.shape
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            quantization[i:i + n, j:j + n] = dct[i:i + n, j:j + n] / q
+    return quantization
+
+
+def ijpeg_quantization(quantization: np.ndarray, n: int) -> np.ndarray:
+    dct = np.zeros(shape=quantization.shape)
+    h, w = dct.shape
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            dct[i:i + n, j:j + n] = quantization[i:i + n, j:j + n] * q
+    return dct
+
+
 def jpeg_encoding(img: np.ndarray, n: int = 8) -> np.ndarray:
-    is_gray = utils.is_grey_scale(img)
-    print("jpeg_encoding()", is_gray)
-    if not is_gray:
-        img = utils.rgb2ycbcr(img=img).astype(int)
-    img = img - 128
+    temp_img = np.copy(img)
+    if len(temp_img.shape) == 3:
+        gray = temp_img[:, :, 0]
+    else:
+        gray = temp_img
+    level_offset = jpeg_level_offset(img=gray)
+    dct = utils.dct(f=level_offset, n=n).astype(int)
+    quantization = jpeg_quantization(dct=dct, n=n).astype(int)
     # TODO
-    if is_gray:
-        result = utils.dct(f=img, n=n).astype(int)
-    else:
-        y, cb, cr = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-        y_result = utils.dct(f=y, n=n).astype(int)
-        cb_result = utils.dct(f=cb, n=n).astype(int)
-        cr_result = utils.dct(f=cr, n=n).astype(int)
-        result = np.dstack((y_result, cb_result, cr_result))
-    return result
+    return quantization
 
 
-def jpeg_decoding(bits: np.ndarray, n: int = 8) -> np.ndarray:
-    is_gray = utils.is_grey_scale(bits)
-    print("jpeg_decoding()", is_gray)
-    if is_gray:
-        result = utils.idct(f=bits, n=n).astype(int)
-    else:
-        y, cb, cr = bits[:, :, 0], bits[:, :, 1], bits[:, :, 2]
-        y_result = utils.idct(f=y, n=n).astype(int)
-        cb_result = utils.idct(f=cb, n=n).astype(int)
-        cr_result = utils.idct(f=cr, n=n).astype(int)
-        result = np.dstack((y_result, cb_result, cr_result))
-    result = result + 128
-    if not is_gray:
-        result = utils.ycbcr2rgb(img=result).astype(int)
-    result = result.clip(0, 255)
-    return result
+def jpeg_decoding(quantization: np.ndarray, n: int = 8) -> np.ndarray:
+    temp_quantization = np.copy(quantization)
+    # TODO
+    dct = ijpeg_quantization(quantization=temp_quantization, n=n).astype(int)
+    level_offset = utils.idct(f=dct, n=n).astype(int)
+    gray = ijpeg_level_offset(level_offset=level_offset)
+    gray = gray.clip(0, 255)
+    img = np.dstack((gray, gray, gray))
+    return img
