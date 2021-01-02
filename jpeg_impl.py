@@ -42,7 +42,31 @@ def ijpeg_quantization(quantization: np.ndarray, n: int) -> np.ndarray:
     return dct
 
 
-def jpeg_encoding(img: np.ndarray, n: int = 8) -> np.ndarray:
+def jpeg_dpcm(quantization: np.ndarray, n: int) -> np.ndarray:
+    h, w = quantization.shape
+    temp = 0
+    dpcm = np.array([])
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            dpcm = np.append(dpcm, quantization[i, j] - temp)
+            temp = quantization[i, j]
+    return dpcm
+
+
+def ijpeg_dpcm(dpcm: np.ndarray, n: int) -> np.ndarray:
+    h = w = int(np.sqrt(dpcm.shape[0])) * n
+    quantization_dc = np.zeros(shape=(h, w))
+    index = 0
+    temp = 0
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            quantization_dc[i, j] = dpcm[index] + temp
+            temp = quantization_dc[i, j]
+            index += 1
+    return quantization_dc
+
+
+def jpeg_encoding(img: np.ndarray, n: int = 8) -> (np.ndarray, np.ndarray):
     temp_img = np.copy(img)
     if len(temp_img.shape) == 3:
         gray = temp_img[:, :, 0]
@@ -51,14 +75,22 @@ def jpeg_encoding(img: np.ndarray, n: int = 8) -> np.ndarray:
     level_offset = jpeg_level_offset(img=gray)
     dct = utils.dct(f=level_offset, n=n).astype(int)
     quantization = jpeg_quantization(dct=dct, n=n).astype(int)
+    dpcm = jpeg_dpcm(quantization=quantization, n=n).astype(int)
+    quantization_ac = np.copy(quantization)
+    h, w = quantization_ac.shape
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            quantization_ac[i, j] = 0
     # TODO
-    return quantization
+    return dpcm, quantization_ac
 
 
-def jpeg_decoding(quantization: np.ndarray, n: int = 8) -> np.ndarray:
-    temp_quantization = np.copy(quantization)
+def jpeg_decoding(seq: (np.ndarray, np.ndarray), n: int = 8) -> np.ndarray:
     # TODO
-    dct = ijpeg_quantization(quantization=temp_quantization, n=n).astype(int)
+    dpcm, quantization_ac = seq
+    quantization_dc = ijpeg_dpcm(dpcm=dpcm, n=n).astype(int)
+    quantization = quantization_ac + quantization_dc
+    dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
     level_offset = utils.idct(f=dct, n=n).astype(int)
     gray = ijpeg_level_offset(level_offset=level_offset)
     gray = gray.clip(0, 255)
