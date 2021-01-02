@@ -45,25 +45,93 @@ def ijpeg_quantization(quantization: np.ndarray, n: int) -> np.ndarray:
 def jpeg_dpcm(quantization: np.ndarray, n: int) -> np.ndarray:
     h, w = quantization.shape
     temp = 0
-    dpcm = np.array([])
+    dpcm = np.zeros(shape=(int(h / n), int(w / n)))
     for i in range(0, h, n):
         for j in range(0, w, n):
-            dpcm = np.append(dpcm, quantization[i, j] - temp)
+            dpcm[int(i / n), int(j / n)] = quantization[i, j] - temp
             temp = quantization[i, j]
     return dpcm
 
 
 def ijpeg_dpcm(dpcm: np.ndarray, n: int) -> np.ndarray:
-    h = w = int(np.sqrt(dpcm.shape[0])) * n
-    quantization_dc = np.zeros(shape=(h, w))
-    index = 0
+    quantization_dc = np.zeros(shape=(dpcm.shape[0] * n, dpcm.shape[1] * n))
+    h, w = quantization_dc.shape
     temp = 0
     for i in range(0, h, n):
         for j in range(0, w, n):
-            quantization_dc[i, j] = dpcm[index] + temp
+            quantization_dc[i, j] = dpcm[int(i / n), int(j / n)] + temp
             temp = quantization_dc[i, j]
-            index += 1
     return quantization_dc
+
+
+def jpeg_zigzag(quantization_ac: np.ndarray, n: int):
+    h, w = quantization_ac.shape
+    h_m, w_m = int(h / n), int(w / n)
+    zigzag = np.zeros(shape=(h_m, w_m, n * n - 1))
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            for ii in range(0, n):
+                for jj in range(0, n):
+                    if ii == 0 and jj == 0:
+                        continue
+                    zigzag[int(i / n), int(j / n), ii * n + jj - 1] = quantization_ac[i + ii, j + jj]
+    return zigzag
+
+
+def ijpeg_zigzag(zigzag: np.ndarray, n: int):
+    h_m, w_m = zigzag.shape[0:2]
+    h, w = h_m * n, w_m * n
+    quantization_ac = np.zeros(shape=(h, w))
+    for i in range(0, h, n):
+        for j in range(0, w, n):
+            for ii in range(0, n):
+                for jj in range(0, n):
+                    if ii == 0 and jj == 0:
+                        continue
+                    quantization_ac[i + ii, j + jj] = zigzag[int(i / n), int(j / n), ii * n + jj - 1]
+    return quantization_ac
+
+
+def jpeg_run_length(zigzag: np.ndarray, n: int) -> np.ndarray:
+    h_m, w_m, length = zigzag.shape[0:3]
+    run_length = np.zeros(shape=(h_m, w_m, length, 2))
+    for i in range(h_m):
+        for j in range(w_m):
+            index = 0
+            zero_count = 0
+            for ll in range(length):
+                if zigzag[i, j, ll] == 0:
+                    zero_count += 1
+                else:
+                    run_length[i, j, index] = [zero_count, zigzag[i, j, ll]]
+                    index += 1
+                    zero_count = 0
+    return run_length
+
+
+def ijpeg_run_length(run_length: np.ndarray, n: int) -> np.ndarray:
+    h_m, w_m, length = run_length.shape[0:3]
+    zigzag = np.zeros(shape=(h_m, w_m, length))
+    for i in range(h_m):
+        for j in range(w_m):
+            index = 0
+            for ll in range(length):
+                zero_count, value = run_length[i, j, ll, 0], run_length[i, j, ll, 1]
+                if value == 0 and zero_count == 0:
+                    break
+                index = int(index + zero_count)
+                zigzag[i, j, index] = value
+                index += 1
+    return zigzag
+
+
+def jpeg_huffman(dpcm: np.ndarray, run_length: np.ndarray, n: int):
+    h_m, w_m = dpcm.shape[0:2]
+    bits = np.array([], dtype=int)
+    for i in range(h_m):
+        for j in range(w_m):
+            dc_word = dpcm[i, j]
+            ac_words = run_length[i, j]
 
 
 def jpeg_encoding(img: np.ndarray, n: int = 8) -> (np.ndarray, np.ndarray):
@@ -81,13 +149,17 @@ def jpeg_encoding(img: np.ndarray, n: int = 8) -> (np.ndarray, np.ndarray):
     for i in range(0, h, n):
         for j in range(0, w, n):
             quantization_ac[i, j] = 0
+    zigzag = jpeg_zigzag(quantization_ac=quantization_ac, n=n)
+    run_length = jpeg_run_length(zigzag=zigzag, n=n)
     # TODO
-    return dpcm, quantization_ac
+    return dpcm, run_length
 
 
 def jpeg_decoding(seq: (np.ndarray, np.ndarray), n: int = 8) -> np.ndarray:
     # TODO
-    dpcm, quantization_ac = seq
+    dpcm, run_length = seq
+    zigzag = ijpeg_run_length(run_length=run_length, n=n)
+    quantization_ac = ijpeg_zigzag(zigzag=zigzag, n=n)
     quantization_dc = ijpeg_dpcm(dpcm=dpcm, n=n).astype(int)
     quantization = quantization_ac + quantization_dc
     dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
