@@ -14,9 +14,14 @@ if __name__ == '__main__':
     plt.imshow(img)
     plt.show()
 
-    bits = jpeg_encoding(img)
-    _img = jpeg_decoding(bits)
+    h, w = img.shape[0:2]
+    n = 8
+    m = int(h / n)
+    bits = jpeg_encoding(img=img, n=n)
+    _img = jpeg_decoding(bits=bits, m=m, n=n)
     plt.imshow(_img)
     plt.show()
     mse = np.mean(np.square(img - _img))
+    ori_bits = h * w * 8
     print("main() mse={:.2f}".format(mse))
+    print("main() ratio={:.2f} ({}/{})".format(len(bits) / ori_bits, len(bits), ori_bits))
