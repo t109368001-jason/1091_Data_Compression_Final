@@ -129,14 +129,6 @@ def ijpeg_run_length(run_length: np.ndarray, n: int) -> np.ndarray:
     return zigzag
 
 
-def bitfield(n):
-    return np.fromstring(np.binary_repr(n), dtype='S1').astype(int)
-
-
-def ibitfield(b):
-    return b.dot(1 << np.arange(b.size)[::-1])
-
-
 def com_1s(bits: np.ndarray) -> np.ndarray:
     return np.array([1 if bit == 0 else 0 for bit in bits]).astype(int)
 
@@ -152,7 +144,7 @@ def jpeg_dc_encoding(value: int) -> np.ndarray:
     cat_bits = np.array(dc_cat_code_dict.get(cat))
     bits = cat_bits
     if value != 0:
-        value_bits = bitfield(abs(value))
+        value_bits = utils.bitfield(abs(value))
         if value < 0:
             value_bits = com_1s(value_bits)
         bits = np.append(bits, value_bits).astype(int)
@@ -175,9 +167,9 @@ def jpeg_dc_decoding(bits: np.ndarray) -> (int, np.ndarray):
                         temp_bits = temp_bits[cat:]
                         if value_bits[0] == 0:
                             value_bits = com_1s(value_bits)
-                            value = 0 - ibitfield(value_bits)
+                            value = 0 - utils.ibitfield(value_bits)
                         else:
-                            value = ibitfield(value_bits)
+                            value = utils.ibitfield(value_bits)
                         return value, temp_bits
         length += 1
         if length > 11:
@@ -195,7 +187,7 @@ def jpeg_ac_encoding(ac_words: np.ndarray):
         if zero_count == 0 and value == 0:
             break
         if value != 0:
-            value_bits = bitfield(abs(value))
+            value_bits = utils.bitfield(abs(value))
             if value < 0:
                 value_bits = com_1s(value_bits)
             bits = np.append(bits, value_bits)
@@ -225,9 +217,9 @@ def jpeg_ac_decoding(bits: np.ndarray, n: int):
                         temp_bits = temp_bits[cat:]
                         if value_bits[0] == 0:
                             value_bits = com_1s(value_bits)
-                            value = 0 - ibitfield(value_bits)
+                            value = 0 - utils.ibitfield(value_bits)
                         else:
-                            value = ibitfield(value_bits)
+                            value = utils.ibitfield(value_bits)
                         ac_words[index] = [zero_count, value]
                         index += 1
                     length = 0

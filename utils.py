@@ -78,3 +78,19 @@ def idct(f: np.ndarray, n: int) -> np.ndarray:
         for j in range(0, w, n):
             result[i:i + n, j:j + n] = np.dot(np.dot(b, f[i:i + 8, j:j + 8]), np.transpose(b))
     return result
+
+
+def bitfield(n, length: int = None):
+    result = np.fromstring(np.binary_repr(n), dtype='S1').astype(int)
+    if length is not None:
+        if len(result) < length:
+            result = np.append(np.zeros(shape=(length - len(result))), result)
+    return result
+
+
+def ibitfield(b, length: int = None):
+    temp_b = np.copy(b)
+    if length is not None:
+        if len(temp_b) > length:
+            temp_b = temp_b[0:length]
+    return int(temp_b.dot(1 << np.arange(temp_b.size)[::-1]))
