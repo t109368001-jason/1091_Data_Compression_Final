@@ -261,12 +261,7 @@ def ijpeg_huffman(bits: np.ndarray, n: int, m: int):
 
 
 def jpeg_encoding(img: np.ndarray, n: int = 8) -> (np.ndarray, np.ndarray):
-    temp_img = np.copy(img)
-    if len(temp_img.shape) == 3:
-        gray = temp_img[:, :, 0]
-    else:
-        gray = temp_img
-    level_offset = jpeg_level_offset(img=gray)
+    level_offset = jpeg_level_offset(img=img)
     dct = utils.dct(f=level_offset, n=n).astype(int)
     quantization = jpeg_quantization(dct=dct, n=n).astype(int)
     dpcm = jpeg_dpcm(quantization=quantization, n=n).astype(int)
@@ -291,9 +286,8 @@ def jpeg_decoding(bits: np.ndarray, m: int, n: int = 8) -> np.ndarray:
     quantization = quantization_ac + quantization_dc
     dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
     level_offset = utils.idct(f=dct, n=n).astype(int)
-    gray = ijpeg_level_offset(level_offset=level_offset)
-    gray = gray.clip(0, 255)
-    img = np.dstack((gray, gray, gray))
+    img = ijpeg_level_offset(level_offset=level_offset)
+    img = img.clip(0, 255)
     return img
 
 

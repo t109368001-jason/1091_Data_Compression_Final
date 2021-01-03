@@ -79,4 +79,5 @@ def lbg_decoding(bits: np.ndarray, codebook: np.ndarray):
             index = utils.ibitfield(bits, codebook_size_bits)
             bits = bits[codebook_size_bits:]
             img[i:i + codeword_dim[0], j:j + codeword_dim[1]] = codebook[index]
+    img = img.clip(0, 255)
     return img
