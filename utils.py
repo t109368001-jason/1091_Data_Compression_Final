@@ -80,7 +80,7 @@ def idct(f: np.ndarray, n: int) -> np.ndarray:
     return result
 
 
-def bitfield(n, length: int = None):
+def bitfield(n: int, length: int = None) -> np.ndarray:
     result = np.fromstring(np.binary_repr(n), dtype='S1').astype(int)
     if length is not None:
         if len(result) < length:
@@ -88,7 +88,7 @@ def bitfield(n, length: int = None):
     return result
 
 
-def ibitfield(b, length: int = None):
+def ibitfield(b: np.ndarray, length: int = None) -> int:
     temp_b = np.copy(b)
     if length is not None:
         if len(temp_b) > length:

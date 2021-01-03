@@ -3,8 +3,11 @@ import numpy as np
 import utils
 
 
-def lbg_encoding(img: np.ndarray, codeword_dim: tuple, codebook_size: int, epsilon: float):
-    codebook_size_bits = int(np.log2(codebook_size))
+def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
+    codeword_dim = param["codeword_dim"]
+    codebook_size = param["codebook_size"]
+    epsilon = param["epsilon"]
+    codeword_bits = int(np.log2(codebook_size))
     h, w = img.shape[0:2]
     h_m, w_m = int(h / codeword_dim[0]), int(w / codeword_dim[1])
     index = 0
@@ -14,11 +17,13 @@ def lbg_encoding(img: np.ndarray, codeword_dim: tuple, codebook_size: int, epsil
     bitstream = np.append(bitstream, utils.bitfield(h, 16))
     bitstream = np.append(bitstream, utils.bitfield(w, 16))
 
+    temp_img = np.copy(img).reshape((h, w_m, codeword_dim[1]))
+    temp_img = temp_img.reshape((h_m, codeword_dim[0], w_m, codeword_dim[1]))
+    temp_img = temp_img.swapaxes(1, 2)
+
     for i in range(0, h_m):
         for j in range(0, w_m):
-            ii = i * codeword_dim[0]
-            jj = j * codeword_dim[1]
-            codebook[index] = np.copy(img[ii:ii + codeword_dim[0], jj:jj + codeword_dim[1]])
+            codebook[index] = np.copy(temp_img[i, j])
             index += 1
             if index == codebook_size:
                 break
@@ -34,18 +39,18 @@ def lbg_encoding(img: np.ndarray, codeword_dim: tuple, codebook_size: int, epsil
                 ii = i * codeword_dim[0]
                 jj = j * codeword_dim[1]
 
-                distances = codebook - img[ii:ii + codeword_dim[0], jj:jj + codeword_dim[1]]
+                distances = codebook - temp_img[i, j]
                 distances = distances * distances
                 distances = np.sum(distances, axis=1)
                 distances = np.sum(distances, axis=1)
                 k = np.argmin(distances)
                 indices[i, j] = k
                 img_[ii:ii + codeword_dim[0], jj:jj + codeword_dim[1]] = codebook[k]
-                temp_codebook[k] += img[ii:ii + codeword_dim[0], jj:jj + codeword_dim[1]]
+                temp_codebook[k] += temp_img[i, j]
 
         for k in range(codebook_size):
             count = len(indices[indices == k])
-            codebook[k] = temp_codebook[k] / count
+            codebook[k] = np.round(temp_codebook[k] / count)
         d_ = img - img_
         d_ = d_ * d_
         d_ = np.sum(np.sum(d_))
@@ -53,18 +58,25 @@ def lbg_encoding(img: np.ndarray, codeword_dim: tuple, codebook_size: int, epsil
         e = abs(d - d_) / d_
         d = d_
 
+    bitstream = np.append(bitstream, codebook.flatten())
+
     for i in range(h_m):
         for j in range(w_m):
-            index_bitstream = utils.bitfield(indices[i, j], codebook_size_bits)
+            index_bitstream = utils.bitfield(indices[i, j], codeword_bits)
             bitstream = np.append(bitstream, index_bitstream)
-    return bitstream, codebook
+    return bitstream
 
 
-def lbg_decoding(bitstream: np.ndarray, codebook: np.ndarray):
+def lbg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
+    codeword_dim = param["codeword_dim"]
+    codebook_size = param["codebook_size"]
     h = utils.ibitfield(bitstream, 16)
     bitstream = bitstream[16:]
     w = utils.ibitfield(bitstream, 16)
     bitstream = bitstream[16:]
+    codebook_bits = codebook_size * codeword_dim[0] * codeword_dim[1]
+    codebook = bitstream[0:codebook_bits].reshape(codebook_size, codeword_dim[0], codeword_dim[1])
+    bitstream = bitstream[codebook_bits:]
     img = np.zeros(shape=(h, w)).astype(int)
     codebook_size, codeword_dim = codebook.shape[0], codebook.shape[1:]
     codebook_size_bits = int(np.log2(codebook_size))

@@ -64,7 +64,7 @@ def ijpeg_dpcm(dpcm: np.ndarray, n: int) -> np.ndarray:
     return quantization_dc
 
 
-def jpeg_zigzag(quantization_ac: np.ndarray, n: int):
+def jpeg_zigzag(quantization_ac: np.ndarray, n: int) -> np.ndarray:
     h, w = quantization_ac.shape
     h_m, w_m = int(h / n), int(w / n)
     zigzag = np.zeros(shape=(h_m, w_m, n * n - 1))
@@ -78,7 +78,7 @@ def jpeg_zigzag(quantization_ac: np.ndarray, n: int):
     return zigzag
 
 
-def ijpeg_zigzag(zigzag: np.ndarray, n: int):
+def ijpeg_zigzag(zigzag: np.ndarray, n: int) -> np.ndarray:
     h_m, w_m = zigzag.shape[0:2]
     h, w = h_m * n, w_m * n
     quantization_ac = np.zeros(shape=(h, w))
@@ -133,7 +133,9 @@ def com_1s(bitstream: np.ndarray) -> np.ndarray:
     return np.array([1 if bit == 0 else 0 for bit in bitstream]).astype(int)
 
 
-def jpeg_cat(value: int):
+def jpeg_cat(value: int) -> int:
+    if value == 0:
+        return 0
     cat = np.floor(np.log2(np.abs(value)))
     cat = 00 if cat == -np.inf else cat + 1
     return int(cat)
@@ -176,7 +178,7 @@ def jpeg_dc_decoding(bitstream: np.ndarray) -> (int, np.ndarray):
             raise Exception("error")
 
 
-def jpeg_ac_encoding(ac_words: np.ndarray):
+def jpeg_ac_encoding(ac_words: np.ndarray) -> np.ndarray:
     bitstream = np.array([]).astype(int)
     for word in ac_words:
         zero_count, value = word[0], word[1]
@@ -194,7 +196,7 @@ def jpeg_ac_encoding(ac_words: np.ndarray):
     return bitstream
 
 
-def jpeg_ac_decoding(bitstream: np.ndarray, n: int):
+def jpeg_ac_decoding(bitstream: np.ndarray, n: int) -> (np.ndarray, np.ndarray):
     temp_bitstream = np.copy(bitstream)
     length = 1
     ac_words = np.zeros(shape=(n * n - 1, 2))
@@ -229,7 +231,7 @@ def jpeg_ac_decoding(bitstream: np.ndarray, n: int):
     return ac_words, temp_bitstream
 
 
-def jpeg_huffman(dpcm: np.ndarray, run_length: np.ndarray, n: int):
+def jpeg_huffman(dpcm: np.ndarray, run_length: np.ndarray) -> np.ndarray:
     h_m, w_m = dpcm.shape[0:2]
     bitstream = np.array([], dtype=int)
     for i in range(h_m):
@@ -243,7 +245,7 @@ def jpeg_huffman(dpcm: np.ndarray, run_length: np.ndarray, n: int):
     return bitstream
 
 
-def ijpeg_huffman(bitstream: np.ndarray, n: int, m: int):
+def ijpeg_huffman(bitstream: np.ndarray, n: int, m: int) -> (np.ndarray, np.ndarray):
     h_m, w_m = m, m
     dpcm = np.zeros(shape=(m, m))
     run_length = np.zeros(shape=(m, m, n * n - 1, 2))
@@ -256,20 +258,23 @@ def ijpeg_huffman(bitstream: np.ndarray, n: int, m: int):
     return dpcm, run_length
 
 
-def jpeg_encoding(img: np.ndarray, n: int = 8, **kwargs) -> (np.ndarray, np.ndarray):
+def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
+    n = param["n"]
     level_offset = jpeg_level_offset(img=img)
     dct = np.round(utils.dct(f=level_offset, n=n)).astype(int)
     quantization = np.round(jpeg_quantization(dct=dct, n=n)).astype(int)
     dpcm = jpeg_dpcm(quantization=quantization, n=n)
     zigzag = jpeg_zigzag(quantization_ac=quantization, n=n)
     run_length = jpeg_run_length(zigzag=zigzag).astype(int)
-    bitstream = jpeg_huffman(dpcm=dpcm, run_length=run_length, n=n)
+    bitstream = jpeg_huffman(dpcm=dpcm, run_length=run_length)
     # TODO
     return bitstream
 
 
-def jpeg_decoding(bitstream: np.ndarray, m: int, n: int = 8) -> np.ndarray:
+def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
     # TODO
+    n = param["n"]
+    m = param["m"]
     dpcm, run_length = ijpeg_huffman(bitstream=bitstream, n=n, m=m)
     zigzag = ijpeg_run_length(run_length=run_length)
     quantization_ac = ijpeg_zigzag(zigzag=zigzag, n=n)
