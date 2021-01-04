@@ -33,7 +33,7 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     d = 0
     while not e < epsilon:
         img_ = np.zeros(shape=img.shape)
-        temp_codebook = np.zeros(shape=codebook.shape)
+        temp_codebook = np.zeros(shape=codebook.shape).astype(np.longlong)
         for i in range(0, h_m):
             for j in range(0, w_m):
                 ii = i * codeword_dim[0]
@@ -50,7 +50,8 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
 
         for k in range(codebook_size):
             count = len(indices[indices == k])
-            temp_codebook[k] /= count
+            if count != 0:
+                temp_codebook[k] = temp_codebook[k] / count
             codebook[k] = np.round(temp_codebook[k])
         d_ = img - img_
         d_ = d_ * d_

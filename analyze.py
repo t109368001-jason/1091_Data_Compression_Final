@@ -9,9 +9,9 @@ input_folder = "./images/"
 # image_names = ["barbara.bmp", "boat.png", "goldhill.bmp", "lena.bmp"]
 image_names = ["barbara.bmp", "boat.png", "goldhill.bmp", "lena.bmp"]
 # codeword_dims = [(4, 4), (8, 8), (16, 16)]
-codeword_dims = [(8, 8)]
+codeword_dims = [(8, 8), (16, 16), (32, 32)]
 # codebook_sizes = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
-codebook_sizes = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
+codebook_sizes = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
 epsilon = 1e-4
 
 if __name__ == '__main__':
@@ -40,6 +40,7 @@ if __name__ == '__main__':
         psnr = 10 * np.log10(255 * 255 / mse)
         hist, bins = np.histogram(img_, np.arange(257))
         prob = hist / np.sum(hist)
+        prob[prob == 0] = 1
         prob_log2 = np.log2(prob)
         prob_log2[prob_log2 == -np.inf] = 0
         entropy = np.sum(-prob * prob_log2)
@@ -75,6 +76,7 @@ if __name__ == '__main__':
                 psnr = 10 * np.log10(255 * 255 / mse)
                 hist, bins = np.histogram(img_, np.arange(257))
                 prob = hist / np.sum(hist)
+                prob[prob == 0] = 1
                 prob_log2 = np.log2(prob)
                 prob_log2[prob_log2 == -np.inf] = 0
                 entropy = np.sum(-prob * prob_log2)
