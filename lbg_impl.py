@@ -83,11 +83,13 @@ def lbg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
     w = utils.ibitfield(bitstream, 16)
     bitstream = bitstream[16:]
     codebook = np.zeros(shape=(codebook_size, codeword_dim[0], codeword_dim[1]))
+    codebook_flatten = bitstream[0:codebook_size * codeword_dim[0] * codeword_dim[1] * 8]
+    bitstream = bitstream[codebook_size * codeword_dim[0] * codeword_dim[1] * 8:]
+    codebook_flatten = codebook_flatten.reshape((codebook.shape[0], codebook.shape[1], codebook.shape[2], 8))
     for k in range(codebook_size):
         for i in range(codeword_dim[0]):
             for j in range(codeword_dim[1]):
-                codebook[k, i, j] = utils.ibitfield(bitstream, 8)
-                bitstream = bitstream[8:]
+                codebook[k, i, j] = utils.ibitfield(codebook_flatten[k, i, j], 8)
     img = np.zeros(shape=(h, w)).astype(int)
     codebook_size, codeword_dim = codebook.shape[0], codebook.shape[1:]
     codebook_size_bits = int(np.log2(codebook_size))
