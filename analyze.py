@@ -6,20 +6,27 @@ from PIL import Image
 import compression
 
 input_folder = "./images/"
+output_folder = "./output/"
 # image_names = ["barbara.bmp", "boat.png", "goldhill.bmp", "lena.bmp"]
 image_names = ["barbara.bmp", "boat.png", "goldhill.bmp", "lena.bmp"]
-# codeword_dims = [(4, 4), (8, 8), (16, 16)]
-codeword_dims = [(8, 8), (16, 16), (32, 32)]
-# codebook_sizes = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
-codebook_sizes = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192]
+# codeword_dims = [(8, 8), (32, 32), (16, 16), (4, 4)]
+codeword_dims = [(8, 8), (32, 32), (16, 16), (4, 4)]
+# codebook_sizes = [64, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 4096, 8192]
+codebook_sizes = [64, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 4096, 8192]
 epsilon = 1e-4
 
+skip_jpeg = False
+# skip_jpeg = True
+output_path = output_folder + "output.csv"
+
 if __name__ == '__main__':
-    if not os.path.exists("output.csv"):
-        with open("output.csv", "w") as output_csv:
+    if not os.path.exists(output_path):
+        with open(output_path, "w") as output_csv:
             output_csv.write(
                 "image,ori_bits,algorithm,bits,jpeg_n,codeword_dim,codebook_size,en_time,de_time,mse,psnr,r,entropy\n")
     for image_name in image_names:
+        if skip_jpeg:
+            break
         file_path = input_folder + image_name
 
         img = np.array(Image.open(file_path).convert('RGB')).astype(int)
@@ -36,6 +43,8 @@ if __name__ == '__main__':
         print("main() image={}, algorithm={}, n={}".format(image_name, algorithm_name, n))
         bitstream, img_, encoding_time, decoding_time = compression.perf(img=img, algorithm_name=algorithm_name,
                                                                          param=jpeg_param)
+        image_file = Image.fromarray(np.dstack((img_, img_, img_)).astype(np.uint8))
+        image_file.save(output_folder + "{}_{}_{}.bmp".format(image_name, algorithm_name, n))
         mse = np.mean(np.square(img - img_))
         psnr = 10 * np.log10(255 * 255 / mse)
         hist, bins = np.histogram(img_, np.arange(257))
@@ -44,7 +53,7 @@ if __name__ == '__main__':
         prob_log2 = np.log2(prob)
         prob_log2[prob_log2 == -np.inf] = 0
         entropy = np.sum(-prob * prob_log2)
-        with open("output.csv", "a") as output_csv:
+        with open(output_path, "a") as output_csv:
             output_csv.write(
                 "{},{},{},{},{},{},{},{:.3f},{:.3f},{:.3f},{:.3f},{:.6f},{:.6f}\n".format(image_name, ori_bits,
                                                                                           algorithm_name,
@@ -56,10 +65,18 @@ if __name__ == '__main__':
                                                                                           len(bitstream) / h / w,
                                                                                           entropy))
 
-        for codeword_dim in codeword_dims:
-            for codebook_size in codebook_sizes:
+    for codeword_dim in codeword_dims:
+        for codebook_size in codebook_sizes:
+            for image_name in image_names:
+                file_path = input_folder + image_name
+
+                img = np.array(Image.open(file_path).convert('RGB')).astype(int)
+                img = img[:, :, 0]
+                h, w = img.shape
+                ori_bits = h * w * 8
                 if codebook_size * codeword_dim[0] * codeword_dim[1] >= h * w:
                     continue
+
                 lgb_param = {
                     "codeword_dim": codeword_dim,
                     "codebook_size": codebook_size,
@@ -72,6 +89,13 @@ if __name__ == '__main__':
                                                                                                 codebook_size))
                 bitstream, img_, encoding_time, decoding_time = compression.perf(img=img, algorithm_name=algorithm_name,
                                                                                  param=lgb_param)
+                image_file = Image.fromarray(np.dstack((img_, img_, img_)).astype(np.uint8))
+                image_file.save(output_folder + "{}_{}_{}_{}.bmp".format(image_name,
+                                                                         algorithm_name,
+                                                                         "{}x{}".format(
+                                                                             codeword_dim[0],
+                                                                             codeword_dim[1]),
+                                                                         codebook_size))
                 mse = np.mean(np.square(img - img_))
                 psnr = 10 * np.log10(255 * 255 / mse)
                 hist, bins = np.histogram(img_, np.arange(257))
@@ -80,7 +104,7 @@ if __name__ == '__main__':
                 prob_log2 = np.log2(prob)
                 prob_log2[prob_log2 == -np.inf] = 0
                 entropy = np.sum(-prob * prob_log2)
-                with open("output.csv", "a") as output_csv:
+                with open(output_path, "a") as output_csv:
                     output_csv.write(
                         "{},{},{},{},{},{},{},{:.3f},{:.3f},{:.3f},{:.3f},{:.6f},{:.6f}\n".format(image_name, ori_bits,
                                                                                                   algorithm_name,
