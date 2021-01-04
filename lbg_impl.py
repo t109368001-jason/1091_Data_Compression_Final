@@ -23,16 +23,7 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
 
     for i in range(0, h_m):
         for j in range(0, w_m):
-            while True:
-                codebook[index] = np.copy(temp_img[i, j])
-                flag = True
-                for ii in range(index):
-                    if np.sum(np.sum(np.abs(codebook[index] - codebook[ii]))) == 0:
-                        flag = False
-                        break
-                if flag:
-                    break
-            index += 1
+            codebook[index] = np.copy(temp_img[i, j])
             if index == codebook_size:
                 break
         if index == codebook_size:
