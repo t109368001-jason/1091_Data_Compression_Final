@@ -50,7 +50,8 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
 
         for k in range(codebook_size):
             count = len(indices[indices == k])
-            codebook[k] = np.round(temp_codebook[k] / count)
+            temp_codebook[k] /= count
+            codebook[k] = np.round(temp_codebook[k])
         d_ = img - img_
         d_ = d_ * d_
         d_ = np.sum(np.sum(d_))
