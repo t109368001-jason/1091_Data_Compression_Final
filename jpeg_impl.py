@@ -157,22 +157,21 @@ def jpeg_dc_decoding(bitstream: np.ndarray) -> (int, np.ndarray):
     temp_bitstream = np.copy(bitstream)
     length = 2
     while True:
-        for key, code in dc_cat_code_dict.items():
-            if len(code) == length:
-                if list(temp_bitstream[0:length]) == code:
-                    temp_bitstream = temp_bitstream[length:]
-                    cat = key
-                    if cat == 0:
-                        return 0, temp_bitstream
-                    else:
-                        value_bitstream = temp_bitstream[0:cat]
-                        temp_bitstream = temp_bitstream[cat:]
-                        if value_bitstream[0] == 0:
-                            value_bitstream = com_1s(value_bitstream)
-                            value = 0 - utils.ibitfield(value_bitstream)
-                        else:
-                            value = utils.ibitfield(value_bitstream)
-                        return value, temp_bitstream
+        key = utils.ibitfield(temp_bitstream[0:length])
+        cat = dc_code_cat_dict.get(key + (1 << length))
+        if cat is not None:
+            temp_bitstream = temp_bitstream[length:]
+            if cat == 0:
+                return 0, temp_bitstream
+            else:
+                value_bitstream = temp_bitstream[0:cat]
+                temp_bitstream = temp_bitstream[cat:]
+                if value_bitstream[0] == 0:
+                    value_bitstream = com_1s(value_bitstream)
+                    value = 0 - utils.ibitfield(value_bitstream)
+                else:
+                    value = utils.ibitfield(value_bitstream)
+                return value, temp_bitstream
         length += 1
         if length > 11:
             raise Exception("error")
@@ -302,6 +301,21 @@ dc_cat_code_dict = {
     9: [1, 1, 1, 1, 1, 1, 0],
     10: [1, 1, 1, 1, 1, 1, 1, 0],
     11: [1, 1, 1, 1, 1, 1, 1, 1, 0],
+}
+
+dc_code_cat_dict = {
+    4: 0,
+    10: 1,
+    11: 2,
+    12: 3,
+    13: 4,
+    14: 5,
+    30: 6,
+    62: 7,
+    126: 8,
+    254: 9,
+    510: 10,
+    1022: 11,
 }
 
 ac_run_cat_code_dict = {
