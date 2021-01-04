@@ -103,7 +103,7 @@ def jpeg_run_length(zigzag: np.ndarray) -> np.ndarray:
                 if zigzag[i, j, ll] == 0:
                     zero_count += 1
                 else:
-                    if zero_count > 15:
+                    while zero_count > 15:
                         run_length[i, j, index] = [15, 0]
                         index += 1
                         zero_count -= 16
@@ -185,6 +185,8 @@ def jpeg_ac_encoding(ac_words: np.ndarray) -> np.ndarray:
         cat = jpeg_cat(value=value)
         key = "{:X}{:X}".format(zero_count, cat)
         run_cat_bitstream = ac_run_cat_code_dict.get(key)
+        if run_cat_bitstream is None:
+            raise Exception("error")
         bitstream = np.append(bitstream, run_cat_bitstream)
         if zero_count == 0 and value == 0:
             break
