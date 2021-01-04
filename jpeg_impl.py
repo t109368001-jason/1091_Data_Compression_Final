@@ -200,34 +200,33 @@ def jpeg_ac_encoding(ac_words: np.ndarray) -> np.ndarray:
 
 def jpeg_ac_decoding(bitstream: np.ndarray, n: int) -> (np.ndarray, np.ndarray):
     temp_bitstream = np.copy(bitstream)
-    length = 1
+    length = 2
     ac_words = np.zeros(shape=(n * n - 1, 2))
     index = 0
     while len(temp_bitstream) > 0:
-        for key, code in ac_run_cat_code_dict.items():
-            if len(code) == length:
-                if list(temp_bitstream[0:length]) == code:
-                    temp_bitstream = temp_bitstream[length:]
-                    run_cat = key
-                    zero_count, cat = int(run_cat[0], 16), int(run_cat[1], 16)
-                    if cat == 0:
-                        if zero_count == 0:
-                            return ac_words, temp_bitstream
-                        else:
-                            ac_words[index] = [zero_count, 0]
-                            index += 1
-                    else:
-                        value_bitstream = temp_bitstream[0:cat]
-                        temp_bitstream = temp_bitstream[cat:]
-                        if value_bitstream[0] == 0:
-                            value_bitstream = com_1s(value_bitstream)
-                            value = 0 - utils.ibitfield(value_bitstream)
-                        else:
-                            value = utils.ibitfield(value_bitstream)
-                        ac_words[index] = [zero_count, value]
-                        index += 1
-                    length = 1
-                    continue
+        key = utils.ibitfield(temp_bitstream[0:length])
+        run_cat = ac_code_run_cat_dict.get(key)
+        if run_cat is not None:
+            temp_bitstream = temp_bitstream[length:]
+            zero_count, cat = int(run_cat[0], 16), int(run_cat[1], 16)
+            if cat == 0:
+                if zero_count == 0:
+                    return ac_words, temp_bitstream
+                else:
+                    ac_words[index] = [zero_count, 0]
+                    index += 1
+            else:
+                value_bitstream = temp_bitstream[0:cat]
+                temp_bitstream = temp_bitstream[cat:]
+                if value_bitstream[0] == 0:
+                    value_bitstream = com_1s(value_bitstream)
+                    value = 0 - utils.ibitfield(value_bitstream)
+                else:
+                    value = utils.ibitfield(value_bitstream)
+                ac_words[index] = [zero_count, value]
+                index += 1
+            length = 2
+            continue
         length += 1
         if length > 16:
             raise Exception("error")
@@ -468,4 +467,169 @@ ac_run_cat_code_dict = {
     "F8": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
     "F9": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1],
     "FA": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+}
+
+ac_code_run_cat_dict = {
+    10: "00",
+    0: "01",
+    1: "02",
+    4: "03",
+    11: "04",
+    26: "05",
+    120: "06",
+    248: "07",
+    1014: "08",
+    65410: "09",
+    65411: "0A",
+    12: "11",
+    27: "12",
+    121: "13",
+    502: "14",
+    2038: "15",
+    65412: "16",
+    65413: "17",
+    65414: "18",
+    65415: "19",
+    65416: "1A",
+    28: "21",
+    249: "22",
+    1015: "23",
+    4084: "24",
+    65417: "25",
+    65418: "26",
+    65419: "27",
+    65420: "28",
+    65421: "29",
+    65422: "2A",
+    58: "31",
+    503: "32",
+    4085: "33",
+    65423: "34",
+    65424: "35",
+    65425: "36",
+    65426: "37",
+    65427: "38",
+    65428: "39",
+    65429: "3A",
+    59: "41",
+    1016: "42",
+    65430: "43",
+    65431: "44",
+    65432: "45",
+    65433: "46",
+    65434: "47",
+    65435: "48",
+    65436: "49",
+    65437: "4A",
+    122: "51",
+    2039: "52",
+    65438: "53",
+    65439: "54",
+    65440: "55",
+    65441: "56",
+    65442: "57",
+    65443: "58",
+    65444: "59",
+    65445: "5A",
+    123: "61",
+    4086: "62",
+    65446: "63",
+    65447: "64",
+    65448: "65",
+    65449: "66",
+    65450: "67",
+    65451: "68",
+    65452: "69",
+    65453: "6A",
+    250: "71",
+    4087: "72",
+    65454: "73",
+    65455: "74",
+    65456: "75",
+    65457: "76",
+    65458: "77",
+    65459: "78",
+    65460: "79",
+    65461: "7A",
+    504: "81",
+    32704: "82",
+    65462: "83",
+    65463: "84",
+    65464: "85",
+    65465: "86",
+    65466: "87",
+    65467: "88",
+    65468: "89",
+    65469: "8A",
+    505: "91",
+    65470: "92",
+    65471: "93",
+    65472: "94",
+    65473: "95",
+    65474: "96",
+    65475: "97",
+    65476: "98",
+    65477: "99",
+    65478: "9A",
+    506: "A1",
+    65479: "A2",
+    65480: "A3",
+    65481: "A4",
+    65482: "A5",
+    65483: "A6",
+    65484: "A7",
+    65485: "A8",
+    65486: "A9",
+    65487: "AA",
+    1017: "B1",
+    65488: "B2",
+    65489: "B3",
+    65490: "B4",
+    65491: "B5",
+    65492: "B6",
+    65493: "B7",
+    65494: "B8",
+    65495: "B9",
+    65496: "BA",
+    1018: "C1",
+    65497: "C2",
+    65498: "C3",
+    65499: "C4",
+    65500: "C5",
+    65501: "C6",
+    65502: "C7",
+    65503: "C8",
+    65504: "C9",
+    65505: "CA",
+    2040: "D1",
+    65506: "D2",
+    65507: "D3",
+    65508: "D4",
+    65509: "D5",
+    65510: "D6",
+    65511: "D7",
+    65512: "D8",
+    65513: "D9",
+    65514: "EA",
+    65515: "E1",
+    65516: "E2",
+    65517: "E3",
+    65518: "E4",
+    65519: "E5",
+    65520: "E6",
+    65521: "E7",
+    65522: "E8",
+    65523: "E9",
+    65524: "EA",
+    2041: "F0",
+    65525: "F1",
+    65526: "F2",
+    65527: "F3",
+    65528: "F4",
+    65529: "F5",
+    65530: "F6",
+    65531: "F7",
+    65532: "F8",
+    65533: "F9",
+    65534: "FA",
 }
