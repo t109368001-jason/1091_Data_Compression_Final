@@ -226,7 +226,8 @@ def jpeg_ac_decoding(bitstream: np.ndarray, n: int) -> (np.ndarray, np.ndarray):
                             value = utils.ibitfield(value_bitstream)
                         ac_words[index] = [zero_count, value]
                         index += 1
-                    length = 0
+                    length = 1
+                    continue
         length += 1
         if length > 16:
             raise Exception("error")
