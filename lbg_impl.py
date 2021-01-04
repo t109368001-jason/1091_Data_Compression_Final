@@ -60,10 +60,13 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         e = abs(d - d_) / d_
         d = d_
 
-    codebook_flatten = codebook.flatten()
-
-    for codebook_element in codebook_flatten:
-        bitstream = np.append(bitstream, utils.bitfield(codebook_element, 8))
+    codebook_flatten = np.zeros(shape=(codebook.shape[0], codebook.shape[1], codebook.shape[2], 8))
+    for k in range(codebook_size):
+        for i in range(codeword_dim[0]):
+            for j in range(codeword_dim[1]):
+                codebook_flatten[k, i, j] = utils.bitfield(codebook[k, i, j], 8)
+    codebook_flatten = codebook_flatten.flatten()
+    bitstream = np.append(bitstream, codebook_flatten)
 
     for i in range(h_m):
         for j in range(w_m):
