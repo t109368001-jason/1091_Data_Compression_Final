@@ -390,9 +390,6 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         y_dc = np.zeros(shape=(y_block.shape[0], y_block.shape[1]))
         cb_dc = np.zeros(shape=(y_block.shape[0], y_block.shape[1]))
         cr_dc = np.zeros(shape=(y_block.shape[0], y_block.shape[1]))
-        y_zigzag = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1))
-        cb_zigzag = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1))
-        cr_zigzag = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1))
         y_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
         cb_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
         cr_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
@@ -406,16 +403,16 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
                 cr_block[ii, jj] = np.round(cr_block[ii, jj] / q_c)
                 temp = y_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 y_dc[ii, jj] = temp[0]
-                y_zigzag[ii, jj] = temp[1:]
+                y_zigzag = temp[1:]
                 temp = cb_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 cb_dc[ii, jj] = temp[0]
-                cb_zigzag[ii, jj] = temp[1:]
+                cb_zigzag = temp[1:]
                 temp = cr_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 cr_dc[ii, jj] = temp[0]
-                cr_zigzag[ii, jj] = temp[1:]
-                y_run_length[ii, jj] = jpeg_run_length_block(y_zigzag[ii, jj])
-                cb_run_length[ii, jj] = jpeg_run_length_block(cb_zigzag[ii, jj])
-                cr_run_length[ii, jj] = jpeg_run_length_block(cr_zigzag[ii, jj])
+                cr_zigzag = temp[1:]
+                y_run_length[ii, jj] = jpeg_run_length_block(y_zigzag)
+                cb_run_length[ii, jj] = jpeg_run_length_block(cb_zigzag)
+                cr_run_length[ii, jj] = jpeg_run_length_block(cr_zigzag)
         return y_dc, y_run_length, cb_dc, cb_run_length, cr_dc, cr_run_length
 
 
@@ -438,23 +435,20 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
     else:
         y_dc, y_run_length, cb_dc, cb_run_length, cr_dc, cr_run_length = bitstream
         b = utils.get_b(n)
-        y_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
-        cb_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
-        cr_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
         y_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
         cb_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
         cr_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
         for ii in range(y_dc.shape[0]):
             for jj in range(y_dc.shape[1]):
-                y_zigzag[ii, jj] = ijpeg_run_length_block(y_run_length[ii, jj])
-                cb_zigzag[ii, jj] = ijpeg_run_length_block(cb_run_length[ii, jj])
-                cr_zigzag[ii, jj] = ijpeg_run_length_block(cr_run_length[ii, jj])
+                y_zigzag = ijpeg_run_length_block(y_run_length[ii, jj])
+                cb_zigzag = ijpeg_run_length_block(cb_run_length[ii, jj])
+                cr_zigzag = ijpeg_run_length_block(cr_run_length[ii, jj])
                 temp_zigzag_index_to_index_table = np.array(zigzag_index_to_index_table)[1:] - 1
-                temp = y_zigzag[ii, jj][temp_zigzag_index_to_index_table]
+                temp = y_zigzag[temp_zigzag_index_to_index_table]
                 y_block[ii, jj] = np.append(y_dc[ii, jj], temp).reshape(n, n)
-                temp = cb_zigzag[ii, jj][temp_zigzag_index_to_index_table]
+                temp = cb_zigzag[temp_zigzag_index_to_index_table]
                 cb_block[ii, jj] = np.append(cb_dc[ii, jj], temp).reshape(n, n)
-                temp = cr_zigzag[ii, jj][temp_zigzag_index_to_index_table]
+                temp = cr_zigzag[temp_zigzag_index_to_index_table]
                 cr_block[ii, jj] = np.append(cr_dc[ii, jj], temp).reshape(n, n)
                 y_block[ii, jj] = np.round(y_block[ii, jj] * q)
                 cb_block[ii, jj] = np.round(cb_block[ii, jj] * q_c)
