@@ -1,3 +1,5 @@
+from time import time
+
 import numpy as np
 
 import utils
@@ -11,6 +13,17 @@ q = [
     [24, 35, 55, 64, 81, 104, 113, 92],
     [49, 64, 78, 87, 103, 121, 120, 101],
     [72, 92, 95, 98, 112, 100, 103, 99]
+]
+
+q_c = [
+    [17, 18, 24, 47, 99, 99, 99, 99],
+    [18, 21, 26, 66, 99, 99, 99, 99],
+    [24, 26, 56, 99, 99, 99, 99, 99],
+    [47, 66, 99, 99, 99, 99, 99, 99],
+    [99, 99, 99, 99, 99, 99, 99, 99],
+    [99, 99, 99, 99, 99, 99, 99, 99],
+    [99, 99, 99, 99, 99, 99, 99, 99],
+    [99, 99, 99, 99, 99, 99, 99, 99],
 ]
 
 
@@ -310,15 +323,28 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         # TODO
         return bitstream
     else:
-        j, a, b = param["jab"]
-        ycbcr = np.round(utils.rgb2ycbcr(img=img)).astype(int)
+        ycbcr = np.round(utils.rgb2ycbcr(img=img))
+        ycbcr = ycbcr - 128
         y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
+        j, a, b = param["jab"]
         cb = jpeg_down_sampling(cb, j, a, b)
         cr = jpeg_down_sampling(cr, j, a, b)
         y_block = utils.img2block(img=y, block_shape=(n, n))
         cb_block = utils.img2block(img=cb, block_shape=(n, n))
         cr_block = utils.img2block(img=cr, block_shape=(n, n))
-        img = img.clip(0, 255).astype(int)
+        start = time()
+        b = utils.get_b(n)
+        for ii in range(y_block.shape[0]):
+            for jj in range(y_block.shape[1]):
+                y_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), y_block[ii, jj]), b))
+                y_block[ii, jj] = np.round(y_block[ii, jj] / q)
+        for ii in range(cb_block.shape[0]):
+            for jj in range(cb_block.shape[1]):
+                cb_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), cb_block[ii, jj]), b))
+                cr_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), cr_block[ii, jj]), b))
+                cb_block[ii, jj] = np.round(cb_block[ii, jj] / q_c)
+                cr_block[ii, jj] = np.round(cr_block[ii, jj] / q_c)
+        print("jpeg_encoding()", time() - start)
         return y_block, cb_block, cr_block
 
 
@@ -339,15 +365,29 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
         img = img.clip(0, 255)
         return img
     else:
-        j, a, b = param["jab"]
         y_block, cb_block, cr_block = bitstream
+        start = time()
+        b = utils.get_b(n)
+        for ii in range(y_block.shape[0]):
+            for jj in range(y_block.shape[1]):
+                y_block[ii, jj] = np.round(y_block[ii, jj] * q)
+                y_block[ii, jj] = np.round(np.dot(np.dot(b, y_block[ii, jj]), np.transpose(b)))
+        for ii in range(cb_block.shape[0]):
+            for jj in range(cb_block.shape[1]):
+                cb_block[ii, jj] = np.round(cb_block[ii, jj] * q_c)
+                cr_block[ii, jj] = np.round(cr_block[ii, jj] * q_c)
+                cb_block[ii, jj] = np.round(np.dot(np.dot(b, cb_block[ii, jj]), np.transpose(b)))
+                cr_block[ii, jj] = np.round(np.dot(np.dot(b, cr_block[ii, jj]), np.transpose(b)))
+        print("jpeg_decoding()", time() - start)
         y = utils.block2img(block=y_block)
         cb = utils.block2img(block=cb_block)
         cr = utils.block2img(block=cr_block)
+        j, a, b = param["jab"]
         cb = jpeg_up_sampling(cb, j, a, b)
         cr = jpeg_up_sampling(cr, j, a, b)
         ycbcr = np.dstack([y, cb, cr])
-        img = np.round(utils.ycbcr2rgb(img=ycbcr)).astype(int)
+        ycbcr = ycbcr + 128
+        img = np.round(utils.ycbcr2rgb(img=ycbcr))
         img = img.clip(0, 255).astype(int)
         return img
 

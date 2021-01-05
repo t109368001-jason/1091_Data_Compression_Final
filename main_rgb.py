@@ -7,7 +7,7 @@ import compression
 input_folder = "./images/"
 
 if __name__ == '__main__':
-    file_path = input_folder + "baboon.png"
+    file_path = input_folder + "lena.png"
 
     img = np.array(Image.open(file_path).convert('RGB')).astype(int)
     plt.imshow(img)
