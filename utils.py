@@ -1,3 +1,5 @@
+from time import time
+
 import numpy as np
 
 
@@ -15,31 +17,26 @@ def is_grey_scale(img: np.ndarray) -> bool:
     return True
 
 
+rgb2ycbcr_t = np.array([[0.299, -0.168636, 0.499813],
+                        [0.587, -0.331068, - 0.418531],
+                        [0.114, 0.499704, - 0.081282]])
+
+
 def rgb2ycbcr(img: np.ndarray, delta: int = 128) -> np.ndarray:
-    h, w, c = img.shape
-    result = np.zeros(shape=img.shape)
-    for i in range(h):
-        for j in range(w):
-            p = img[i, j]
-            r, g, b = p[0], p[1], p[2]
-            y = 0.299 * r + 0.587 * g + 0.114 * b
-            cb = 0.564 * (b - y) + delta
-            cr = 0.713 * (r - y) + delta
-            result[i, j] = [y, cb, cr]
+    start = time()
+    t2 = np.array([0, delta, delta])
+    result = np.dot(img, rgb2ycbcr_t) + t2
+    print("rgb2ycbcr()", time() - start)
     return result
 
 
 def ycbcr2rgb(img: np.ndarray, delta: int = 128) -> np.ndarray:
-    h, w, c = img.shape
-    result = np.zeros(shape=img.shape)
-    for i in range(h):
-        for j in range(w):
-            p = img[i, j]
-            y, cb, cr = p[0], p[1], p[2]
-            r = y + 1.403 * (cr - delta)
-            g = y - 0.714 * (cr - delta) - 0.344 * (cb - delta)
-            b = y + 1.773 * (cb - delta)
-            result[i, j] = [r, g, b]
+    start = time()
+    it = np.linalg.inv(rgb2ycbcr_t)
+    t2 = np.array([0, delta, delta])
+    a = (img - t2)
+    result = np.dot(a, it)
+    print("ycbcr2rgb()", time() - start)
     return result
 
 
@@ -86,6 +83,26 @@ def bitfield(n: int, length: int = None) -> np.ndarray:
         if len(result) < length:
             result = np.append(np.zeros(shape=(length - len(result))), result)
     return result
+
+
+def img2block(img: np.ndarray, block_shape: tuple):
+    h, w = img.shape[0:2]
+    h_m, w_m = int(h / block_shape[0]), int(w / block_shape[1])
+    image_block = np.copy(img).reshape((h, w_m, block_shape[1]))
+    image_block = image_block.reshape((h_m, block_shape[0], w_m, block_shape[1]))
+    image_block = image_block.swapaxes(1, 2)
+    return image_block
+
+
+def block2img(block: np.ndarray):
+    block_shape = block.shape[2:4]
+    h_m, w_m = block.shape[0:2]
+    h, w = h_m * block_shape[0], w_m * block_shape[1]
+    img = np.copy(block)
+    img = img.swapaxes(1, 2)
+    img = img.reshape((h, w_m, block_shape[1]))
+    img = img.reshape((h, w))
+    return img
 
 
 def ibitfield(b: np.ndarray, length: int = None) -> int:

@@ -27,7 +27,8 @@ if __name__ == '__main__':
     n = 8
     jpeg_param = {
         "n": n,
-        "m": (int(h / n))
+        "m": (int(h / n)),
+        "is_gray": True
     }
     bitstream, img_, encoding_time, decoding_time = compression.perf(img=img, algorithm_name="JPEG", param=jpeg_param)
     compression.show("JPEG", img, img_, bitstream, encoding_time, decoding_time)

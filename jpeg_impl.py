@@ -298,31 +298,50 @@ def ijpeg_huffman(bitstream: np.ndarray, n: int, m: int) -> (np.ndarray, np.ndar
 
 def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     n = param["n"]
-    level_offset = jpeg_level_offset(img=img)
-    dct = np.round(utils.dct(f=level_offset, n=n)).astype(int)
-    quantization = np.round(jpeg_quantization(dct=dct, n=n)).astype(int)
-    dpcm = jpeg_dpcm(quantization=quantization, n=n)
-    zigzag = jpeg_zigzag(quantization_ac=quantization, n=n)
-    run_length = jpeg_run_length(zigzag=zigzag).astype(int)
-    bitstream = jpeg_huffman(dpcm=dpcm, run_length=run_length)
-    # TODO
-    return bitstream
+    is_gray = param["is_gray"]
+    if is_gray:
+        level_offset = jpeg_level_offset(img=img)
+        dct = np.round(utils.dct(f=level_offset, n=n)).astype(int)
+        quantization = np.round(jpeg_quantization(dct=dct, n=n)).astype(int)
+        dpcm = jpeg_dpcm(quantization=quantization, n=n)
+        zigzag = jpeg_zigzag(quantization_ac=quantization, n=n)
+        run_length = jpeg_run_length(zigzag=zigzag).astype(int)
+        bitstream = jpeg_huffman(dpcm=dpcm, run_length=run_length)
+        # TODO
+        return bitstream
+    else:
+        ycbcr = utils.rgb2ycbcr(img=img)
+        y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
+        y_block = utils.img2block(img=y, block_shape=(n, n))
+        cb_block = utils.img2block(img=cb, block_shape=(n, n))
+        cr_block = utils.img2block(img=cr, block_shape=(n, n))
+        return y_block, cb_block, cr_block
 
 
 def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
     # TODO
     n = param["n"]
     m = param["m"]
-    dpcm, run_length = ijpeg_huffman(bitstream=bitstream, n=n, m=m)
-    zigzag = ijpeg_run_length(run_length=run_length)
-    quantization_ac = ijpeg_zigzag(zigzag=zigzag, n=n)
-    quantization_dc = ijpeg_dpcm(dpcm=dpcm, n=n).astype(int)
-    quantization = quantization_ac + quantization_dc
-    dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
-    level_offset = utils.idct(f=dct, n=n).astype(int)
-    img = ijpeg_level_offset(level_offset=level_offset)
-    img = img.clip(0, 255)
-    return img
+    is_gray = param["is_gray"]
+    if is_gray:
+        dpcm, run_length = ijpeg_huffman(bitstream=bitstream, n=n, m=m)
+        zigzag = ijpeg_run_length(run_length=run_length)
+        quantization_ac = ijpeg_zigzag(zigzag=zigzag, n=n)
+        quantization_dc = ijpeg_dpcm(dpcm=dpcm, n=n).astype(int)
+        quantization = quantization_ac + quantization_dc
+        dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
+        level_offset = utils.idct(f=dct, n=n).astype(int)
+        img = ijpeg_level_offset(level_offset=level_offset)
+        img = img.clip(0, 255)
+        return img
+    else:
+        y_block, cb_block, cr_block = bitstream
+        y = utils.block2img(block=y_block)
+        cb = utils.block2img(block=cb_block)
+        cr = utils.block2img(block=cr_block)
+        ycbcr = np.dstack([y, cb, cr])
+        img = utils.ycbcr2rgb(img=ycbcr)
+        return img
 
 
 dc_cat_code_dict = {

@@ -1,5 +1,7 @@
 from unittest import TestCase
+
 import numpy as np
+
 from jpeg_impl import jpeg_down_sampling, jpeg_up_sampling
 
 

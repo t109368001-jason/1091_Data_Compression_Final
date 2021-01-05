@@ -37,7 +37,8 @@ if __name__ == '__main__':
         n = 8
         jpeg_param = {
             "n": n,
-            "m": (int(h / n))
+            "m": (int(h / n)),
+            "is_gray": True
         }
         algorithm_name = "JPEG"
         print("main() image={}, algorithm={}, n={}".format(image_name, algorithm_name, n))
