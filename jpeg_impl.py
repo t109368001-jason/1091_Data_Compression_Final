@@ -14,6 +14,43 @@ q = [
 ]
 
 
+def jpeg_check_jab(j: int, a: int, b: int):
+    if j < 2:
+        raise Exception("error")
+    if a > j or b > j:
+        raise Exception("error")
+    if a != b and b != 0:
+        raise Exception("error")
+
+
+def jpeg_down_sampling(img: np.ndarray, j: int, a: int, b: int) -> np.ndarray:
+    jpeg_check_jab(j, a, b)
+    h, w = img.shape[0:2]
+    h_m = 2 if b == 0 else 1
+    w_m = int(j / a)
+    down_sampling = np.zeros(shape=(int(h / h_m), int(w / w_m))).astype(img.dtype)
+
+    for ii in range(0, h, h_m):
+        for jj in range(0, w, w_m):
+            down_sampling[int(ii / h_m), int(jj / w_m)] = img[ii, jj]
+    return down_sampling
+
+
+def jpeg_up_sampling(down_sampling: np.ndarray, j: int, a: int, b: int) -> np.ndarray:
+    jpeg_check_jab(j, a, b)
+    h, w = down_sampling.shape[0:2]
+    h_m = 2 if b == 0 else 1
+    w_m = int(j / a)
+    img = np.zeros(shape=(int(h * h_m), int(w * w_m))).astype(down_sampling.dtype)
+
+    for ii in range(0, h):
+        for jj in range(0, w):
+            for iii in range(h_m):
+                for jjj in range(w_m):
+                    img[int(ii * h_m) + iii, int(jj * w_m) + jjj] = down_sampling[ii, jj]
+    return img
+
+
 def jpeg_level_offset(img: np.ndarray) -> np.ndarray:
     level_offset = img - 128
     return level_offset
