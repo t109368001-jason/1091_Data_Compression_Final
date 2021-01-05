@@ -10,7 +10,6 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     codeword_bits = int(np.log2(codebook_size))
     h, w = img.shape[0:2]
     h_m, w_m = int(h / codeword_dim[0]), int(w / codeword_dim[1])
-    index = 0
     codebook = np.zeros(shape=(codebook_size, (codeword_dim[0]), (codeword_dim[1]))).astype(int)
     indices = np.zeros(shape=(h_m, w_m)).astype(int)
     bitstream = np.array([]).astype(int)
@@ -21,13 +20,26 @@ def lbg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     temp_img = temp_img.reshape((h_m, codeword_dim[0], w_m, codeword_dim[1]))
     temp_img = temp_img.swapaxes(1, 2)
 
+    index = 0
     for i in range(0, h_m):
         for j in range(0, w_m):
             codebook[index] = np.copy(temp_img[i, j])
+            flag = True
+            for ii in range(index):
+                if np.sum(np.sum(np.abs(codebook[ii] - codebook[index]))) == 0:
+                    flag = False
+            if flag:
+                index += 1
             if index == codebook_size:
                 break
         if index == codebook_size:
             break
+    for k in range(codebook_size):
+        if index == codebook_size:
+            break
+        codebook[index] = (codebook[k] + codebook[k + 1]) / 2
+        index += 1
+
     e = epsilon
     d = 0
     while not e < epsilon:
