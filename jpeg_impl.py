@@ -394,6 +394,8 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         cb_zigzag = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1))
         cr_zigzag = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1))
         y_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
+        cb_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
+        cr_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
         for ii in range(y_block.shape[0]):
             for jj in range(y_block.shape[1]):
                 y_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), y_block[ii, jj]), b))
@@ -411,7 +413,10 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
                 temp = cr_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 cr_dc[ii, jj] = temp[0]
                 cr_zigzag[ii, jj] = temp[1:]
-        return y_dc, y_zigzag, cb_dc, cb_zigzag, cr_dc, cr_zigzag
+                y_run_length[ii, jj] = jpeg_run_length_block(y_zigzag[ii, jj])
+                cb_run_length[ii, jj] = jpeg_run_length_block(cb_zigzag[ii, jj])
+                cr_run_length[ii, jj] = jpeg_run_length_block(cr_zigzag[ii, jj])
+        return y_dc, y_run_length, cb_dc, cb_run_length, cr_dc, cr_run_length
 
 
 def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
@@ -431,13 +436,19 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
         img = img.clip(0, 255)
         return img
     else:
-        y_dc, y_zigzag, cb_dc, cb_zigzag, cr_dc, cr_zigzag = bitstream
+        y_dc, y_run_length, cb_dc, cb_run_length, cr_dc, cr_run_length = bitstream
         b = utils.get_b(n)
-        y_block = np.zeros(shape=(y_zigzag.shape[0], y_zigzag.shape[1], n, n))
-        cb_block = np.zeros(shape=(y_zigzag.shape[0], y_zigzag.shape[1], n, n))
-        cr_block = np.zeros(shape=(y_zigzag.shape[0], y_zigzag.shape[1], n, n))
-        for ii in range(y_zigzag.shape[0]):
-            for jj in range(y_zigzag.shape[1]):
+        y_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
+        cb_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
+        cr_zigzag = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n * n - 1))
+        y_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
+        cb_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
+        cr_block = np.zeros(shape=(y_dc.shape[0], y_dc.shape[1], n, n))
+        for ii in range(y_dc.shape[0]):
+            for jj in range(y_dc.shape[1]):
+                y_zigzag[ii, jj] = ijpeg_run_length_block(y_run_length[ii, jj])
+                cb_zigzag[ii, jj] = ijpeg_run_length_block(cb_run_length[ii, jj])
+                cr_zigzag[ii, jj] = ijpeg_run_length_block(cr_run_length[ii, jj])
                 temp_zigzag_index_to_index_table = np.array(zigzag_index_to_index_table)[1:] - 1
                 temp = y_zigzag[ii, jj][temp_zigzag_index_to_index_table]
                 y_block[ii, jj] = np.append(y_dc[ii, jj], temp).reshape(n, n)
