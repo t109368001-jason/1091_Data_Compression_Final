@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 
 import utils
@@ -377,19 +375,13 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         ycbcr = ycbcr - 128
         y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
         j, a, b = param["jab"]
-        start = time.time()
         cb = jpeg_down_sampling(cb, j, a, b)
         cr = jpeg_down_sampling(cr, j, a, b)
-        start = time.time()
-        print("jpeg_down_sampling", time.time() - start)
         cb = jpeg_up_sampling(cb, j, a, b)
         cr = jpeg_up_sampling(cr, j, a, b)
-        print("jpeg_up_sampling", time.time() - start)
-        start = time.time()
         y_block = utils.img2block(img=y, block_shape=(n, n))
         cb_block = utils.img2block(img=cb, block_shape=(n, n))
         cr_block = utils.img2block(img=cr, block_shape=(n, n))
-        print("img2block", time.time() - start)
         b = utils.get_b(n)
         y_dc = np.zeros(shape=(y_block.shape[0], y_block.shape[1]))
         cb_dc = np.zeros(shape=(y_block.shape[0], y_block.shape[1]))
@@ -397,23 +389,14 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         y_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
         cb_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
         cr_run_length = np.zeros(shape=(y_block.shape[0], y_block.shape[1], n * n - 1, 2))
-        t1 = 0
-        t2 = 0
-        t3 = 0
-        t4 = 0
         for ii in range(y_block.shape[0]):
             for jj in range(y_block.shape[1]):
-                start = time.time()
                 y_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), y_block[ii, jj]), b))
                 cb_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), cb_block[ii, jj]), b))
                 cr_block[ii, jj] = np.round(np.dot(np.dot(np.transpose(b), cr_block[ii, jj]), b))
-                t1 += time.time() - start
-                start = time.time()
                 y_block[ii, jj] = np.round(y_block[ii, jj] / q)
                 cb_block[ii, jj] = np.round(cb_block[ii, jj] / q_c)
                 cr_block[ii, jj] = np.round(cr_block[ii, jj] / q_c)
-                t2 += time.time() - start
-                start = time.time()
                 temp = y_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 y_dc[ii, jj] = temp[0]
                 y_zigzag = temp[1:]
@@ -423,16 +406,9 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
                 temp = cr_block[ii, jj].reshape(n * n)[index_to_zigzag_index_table]
                 cr_dc[ii, jj] = temp[0]
                 cr_zigzag = temp[1:]
-                t3 += time.time() - start
-                start = time.time()
                 y_run_length[ii, jj] = jpeg_run_length_block(y_zigzag)
                 cb_run_length[ii, jj] = jpeg_run_length_block(cb_zigzag)
                 cr_run_length[ii, jj] = jpeg_run_length_block(cr_zigzag)
-                t4 += time.time() - start
-        print("dct", t1)
-        print("quant", t2)
-        print("zigzag", t3)
-        print("run", t4)
         return y_dc, y_run_length, cb_dc, cb_run_length, cr_dc, cr_run_length
 
 
