@@ -310,11 +310,15 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         # TODO
         return bitstream
     else:
-        ycbcr = utils.rgb2ycbcr(img=img)
+        j, a, b = param["jab"]
+        ycbcr = np.round(utils.rgb2ycbcr(img=img)).astype(int)
         y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
+        cb = jpeg_down_sampling(cb, j, a, b)
+        cr = jpeg_down_sampling(cr, j, a, b)
         y_block = utils.img2block(img=y, block_shape=(n, n))
         cb_block = utils.img2block(img=cb, block_shape=(n, n))
         cr_block = utils.img2block(img=cr, block_shape=(n, n))
+        img = img.clip(0, 255).astype(int)
         return y_block, cb_block, cr_block
 
 
@@ -335,12 +339,16 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
         img = img.clip(0, 255)
         return img
     else:
+        j, a, b = param["jab"]
         y_block, cb_block, cr_block = bitstream
         y = utils.block2img(block=y_block)
         cb = utils.block2img(block=cb_block)
         cr = utils.block2img(block=cr_block)
+        cb = jpeg_up_sampling(cb, j, a, b)
+        cr = jpeg_up_sampling(cr, j, a, b)
         ycbcr = np.dstack([y, cb, cr])
-        img = utils.ycbcr2rgb(img=ycbcr)
+        img = np.round(utils.ycbcr2rgb(img=ycbcr)).astype(int)
+        img = img.clip(0, 255).astype(int)
         return img
 
 
