@@ -261,7 +261,8 @@ def ijpeg_zigazg_block(y_zigzag):
     return y_zigzag[zigzag_index_to_index_table_63]
 
 
-def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
+def jpeg_encoding(input_img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
+    img = input_img
     n = param["n"]
     is_gray = param["is_gray"]
     if is_gray:
