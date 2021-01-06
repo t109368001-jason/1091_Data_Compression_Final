@@ -1,5 +1,3 @@
-from time import time
-
 import numpy as np
 
 
@@ -23,20 +21,16 @@ rgb2ycbcr_t = np.array([[0.299, -0.168636, 0.499813],
 
 
 def rgb2ycbcr(img: np.ndarray, delta: int = 128) -> np.ndarray:
-    start = time()
     t2 = np.array([0, delta, delta])
     result = np.dot(img, rgb2ycbcr_t) + t2
-    print("rgb2ycbcr()", time() - start)
     return result
 
 
 def ycbcr2rgb(img: np.ndarray, delta: int = 128) -> np.ndarray:
-    start = time()
     it = np.linalg.inv(rgb2ycbcr_t)
     t2 = np.array([0, delta, delta])
     a = (img - t2)
     result = np.dot(a, it)
-    print("ycbcr2rgb()", time() - start)
     return result
 
 
