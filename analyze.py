@@ -2,9 +2,9 @@ import os
 
 import numpy as np
 from PIL import Image
-import utils
 
 import compression
+import utils
 
 input_folder = "./images/"
 output_folder = "./output/"
@@ -14,12 +14,13 @@ image_names = ["baboon.png", "barbara.bmp", "boat.png", "goldhill.bmp", "lena.bm
 codeword_dims = [(8, 8), (32, 32), (16, 16), (4, 4)]
 # codebook_sizes = [64, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 4096, 8192]
 codebook_sizes = [64, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 4096, 8192]
+
 epsilon = 1e-4
 
 skip_jpeg = False
 # skip_jpeg = True
-# skip_lbg = False
-skip_lbg = True
+skip_lbg = False
+# skip_lbg = True
 output_path = output_folder + "output.csv"
 
 if __name__ == '__main__':
@@ -41,7 +42,6 @@ if __name__ == '__main__':
             n = 8
             jpeg_param = {
                 "n": n,
-                "m": (int(h / n)),
                 "is_gray": is_gray,
                 "jab": (4, 4, 4),
                 "resolution": (h, w)
@@ -81,8 +81,11 @@ if __name__ == '__main__':
                     file_path = input_folder + image_name
 
                     img = np.array(Image.open(file_path).convert('RGB')).astype(int)
-                    img = img[:, :, 0]
-                    h, w = img.shape
+                    is_gray = utils.is_grey_scale(img)
+                    if is_gray:
+                        img = img[:, :, 0]
+                    channel = 1 if is_gray else 3
+                    h, w = img.shape[0:2]
                     ori_bits = h * w * 8
                     if codebook_size * codeword_dim[0] * codeword_dim[1] >= h * w:
                         continue
@@ -100,7 +103,11 @@ if __name__ == '__main__':
                     bitstream, img_, encoding_time, decoding_time = compression.perf(img=img,
                                                                                      algorithm_name=algorithm_name,
                                                                                      param=lgb_param)
-                    image_file = Image.fromarray(np.dstack((img_, img_, img_)).astype(np.uint8))
+                    if is_gray:
+                        img_ = img_.reshape(h, w)
+                        image_file = Image.fromarray(np.dstack((img_, img_, img_)).astype(np.uint8))
+                    else:
+                        image_file = Image.fromarray(img_.astype(np.uint8))
                     image_file.save(output_folder + "{}_{}_{}_{}.bmp".format(image_name,
                                                                              algorithm_name,
                                                                              "{}x{}".format(
@@ -108,7 +115,7 @@ if __name__ == '__main__':
                                                                                  codeword_dim[1]),
                                                                              codebook_size))
                     mse = np.mean(np.square(img - img_))
-                    psnr = 10 * np.log10(255 * 255 / mse)
+                    psnr = 10 * np.log10(255 * 255 * channel / mse)
                     hist, bins = np.histogram(img_, np.arange(257))
                     prob = hist / np.sum(hist)
                     prob[prob == 0] = 1

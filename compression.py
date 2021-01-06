@@ -17,7 +17,7 @@ def perf(img, algorithm_name, param):
     encoding_f = algorithm["encoding"]
     decoding_f = algorithm["decoding"]
     start = time()
-    bitstream = encoding_f(img=img, param=param)
+    bitstream = encoding_f(input_img=img, param=param)
     encoding_time = time() - start
     start = time()
     img_ = decoding_f(bitstream=bitstream, param=param)

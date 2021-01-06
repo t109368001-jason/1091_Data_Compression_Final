@@ -27,7 +27,6 @@ if __name__ == '__main__':
     n = 8
     jpeg_param = {
         "n": n,
-        "m": (int(h / n)),
         "is_gray": False,
         "jab": (4, 4, 4),
         "resolution": (h, w)
