@@ -34,6 +34,8 @@ index_to_zigzag_index_table = [
     58, 59, 52, 45, 38, 31, 39, 46,
     53, 60, 61, 54, 47, 55, 62, 63
 ]
+index_to_zigzag_index_table_63 = np.array(index_to_zigzag_index_table[1:]) - 1
+
 zigzag_index_to_index_table = [
     00, 1, 5, 6, 14, 15, 27, 28,
     2, 4, 7, 13, 16, 26, 29, 42,
@@ -44,6 +46,7 @@ zigzag_index_to_index_table = [
     21, 34, 37, 47, 50, 56, 59, 61,
     35, 36, 48, 49, 57, 58, 62, 63
 ]
+zigzag_index_to_index_table_63 = np.array(zigzag_index_to_index_table[1:]) - 1
 
 
 def jpeg_check_jab(j: int, a: int, b: int):
@@ -357,6 +360,49 @@ def ijpeg_huffman(bitstream: np.ndarray, n: int, m: int) -> (np.ndarray, np.ndar
     return dpcm, run_length
 
 
+def jpeg_dct(y_block: np.ndarray) -> np.ndarray:
+    return np.round(utils.dct_block(y_block)).astype(int)
+
+
+def ijpeg_dct(y_dct):
+    return np.round(utils.idct_block(y_dct)).astype(int)
+
+
+def jpeg_quant_y(y_dct: np.ndarray) -> np.ndarray:
+    return np.round(y_dct / q).astype(y_dct.dtype)
+
+
+def ijpeg_quant_y(y_quant: np.ndarray) -> np.ndarray:
+    return (y_quant * q).astype(y_quant.dtype)
+
+
+def jpeg_quant_cbcr(cb_dct: np.ndarray) -> np.ndarray:
+    return np.round(cb_dct / q_c).astype(cb_dct.dtype)
+
+
+def ijpeg_quant_cbcr(cb_quant: np.ndarray) -> np.ndarray:
+    return (cb_quant * q_c).astype(cb_quant.dtype)
+
+
+def jpeg_dc_ac(block: np.ndarray) -> (np.ndarray, np.ndarray):
+    flatten = block.flatten()
+    return flatten[0], flatten[1:]
+
+
+def ijpeg_dc_ac(dc: np.ndarray, ac: np.ndarray) -> np.ndarray:
+    flatten = np.append(dc, ac)
+    n = int(np.sqrt(len(flatten)))
+    return flatten.reshape(n, n)
+
+
+def jpeg_zigzag_block(y_ac):
+    return y_ac[index_to_zigzag_index_table_63]
+
+
+def ijpeg_zigazg_block(y_zigzag):
+    return y_zigzag[zigzag_index_to_index_table_63]
+
+
 def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     n = param["n"]
     is_gray = param["is_gray"]
@@ -382,28 +428,24 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
         y_block = utils.img2block(img=y, block_shape=(n, n))
         cb_block = utils.img2block(img=cb, block_shape=(n, n))
         cr_block = utils.img2block(img=cr, block_shape=(n, n))
-        b = utils.get_b(n)
         y_dc_last: int = 0
         cb_dc_last: int = 0
         cr_dc_last: int = 0
         bitstream = np.array([]).astype(int)
         for ii in range(y_block.shape[0]):
             for jj in range(y_block.shape[1]):
-                y_dct = np.round(np.dot(np.dot(np.transpose(b), y_block[ii, jj]), b)).astype(int)
-                cb_dct = np.round(np.dot(np.dot(np.transpose(b), cb_block[ii, jj]), b)).astype(int)
-                cr_dct = np.round(np.dot(np.dot(np.transpose(b), cr_block[ii, jj]), b)).astype(int)
-                y_quant = np.round(y_dct / q).astype(int)
-                cb_quant = np.round(cb_dct / q_c).astype(int)
-                cr_quant = np.round(cr_dct / q_c).astype(int)
-                temp = y_quant.reshape(n * n)[index_to_zigzag_index_table].astype(int)
-                y_dc = temp[0]
-                y_zigzag = temp[1:]
-                temp = cb_quant.reshape(n * n)[index_to_zigzag_index_table].astype(int)
-                cb_dc = temp[0]
-                cb_zigzag = temp[1:]
-                temp = cr_quant.reshape(n * n)[index_to_zigzag_index_table].astype(int)
-                cr_dc = temp[0]
-                cr_zigzag = temp[1:]
+                y_dct = jpeg_dct(y_block[ii, jj])
+                cb_dct = jpeg_dct(cb_block[ii, jj])
+                cr_dct = jpeg_dct(cr_block[ii, jj])
+                y_quant = jpeg_quant_y(y_dct)
+                cb_quant = jpeg_quant_cbcr(cb_dct)
+                cr_quant = jpeg_quant_cbcr(cr_dct)
+                y_dc, y_ac = jpeg_dc_ac(y_quant)
+                y_zigzag = jpeg_zigzag_block(y_ac)
+                cb_dc, cb_ac = jpeg_dc_ac(cb_quant)
+                cb_zigzag = jpeg_zigzag_block(cb_ac)
+                cr_dc, cr_ac = jpeg_dc_ac(cr_quant)
+                cr_zigzag = jpeg_zigzag_block(cr_ac)
                 y_run_length = jpeg_run_length_block(y_zigzag)
                 cb_run_length = jpeg_run_length_block(cb_zigzag)
                 cr_run_length = jpeg_run_length_block(cr_zigzag)
@@ -448,7 +490,6 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
         h, w = param["resolution"]
         h_m, w_m = int(h / n), int(w / n)
         bitstream = bitstream
-        b = utils.get_b(n)
         y_block = np.zeros(shape=(h_m, w_m, n, n))
         cb_block = np.zeros(shape=(h_m, w_m, n, n))
         cr_block = np.zeros(shape=(h_m, w_m, n, n))
@@ -466,25 +507,24 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
                 y_zigzag = ijpeg_run_length_block(y_run_length)
                 cb_zigzag = ijpeg_run_length_block(cb_run_length)
                 cr_zigzag = ijpeg_run_length_block(cr_run_length)
-                temp_zigzag_index_to_index_table = np.array(zigzag_index_to_index_table)[1:] - 1
-                temp = y_zigzag[temp_zigzag_index_to_index_table]
+                y_ac = ijpeg_zigazg_block(y_zigzag)
                 y_dc = y_dpcm + y_dc_last
-                y_block[ii, jj] = np.append(y_dc, temp).reshape(n, n)
-                temp = cb_zigzag[temp_zigzag_index_to_index_table]
+                y_quant = ijpeg_dc_ac(y_dc, y_ac)
+                cb_ac = ijpeg_zigazg_block(cb_zigzag)
                 cb_dc = cb_dpcm + cb_dc_last
-                cb_block[ii, jj] = np.append(cb_dc, temp).reshape(n, n)
-                temp = cr_zigzag[temp_zigzag_index_to_index_table]
+                cb_quant = ijpeg_dc_ac(cb_dc, cb_ac)
+                cr_ac = ijpeg_zigazg_block(cr_zigzag)
                 cr_dc = cr_dpcm + cr_dc_last
-                cr_block[ii, jj] = np.append(cr_dc, temp).reshape(n, n)
+                cr_quant = ijpeg_dc_ac(cr_dc, cr_ac)
                 y_dc_last = y_dc
                 cb_dc_last = cb_dc
                 cr_dc_last = cr_dc
-                y_block[ii, jj] = np.round(y_block[ii, jj] * q)
-                cb_block[ii, jj] = np.round(cb_block[ii, jj] * q_c)
-                cr_block[ii, jj] = np.round(cr_block[ii, jj] * q_c)
-                y_block[ii, jj] = np.round(np.dot(np.dot(b, y_block[ii, jj]), np.transpose(b)))
-                cb_block[ii, jj] = np.round(np.dot(np.dot(b, cb_block[ii, jj]), np.transpose(b)))
-                cr_block[ii, jj] = np.round(np.dot(np.dot(b, cr_block[ii, jj]), np.transpose(b)))
+                y_dct = ijpeg_quant_y(y_quant)
+                cb_dct = ijpeg_quant_cbcr(cb_quant)
+                cr_dct = ijpeg_quant_cbcr(cr_quant)
+                y_block[ii, jj] = ijpeg_dct(y_dct)
+                cb_block[ii, jj] = ijpeg_dct(cb_dct)
+                cr_block[ii, jj] = ijpeg_dct(cr_dct)
         y = utils.block2img(block=y_block)
         cb = utils.block2img(block=cb_block)
         cr = utils.block2img(block=cr_block)

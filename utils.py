@@ -61,6 +61,15 @@ def dct(f: np.ndarray, n: int) -> np.ndarray:
     return result
 
 
+def dct_block(f: np.ndarray) -> np.ndarray:
+    h, w = f.shape[0:2]
+    if h != w:
+        raise Exception("error")
+    n = h
+    b = get_b(n)
+    return np.dot(np.dot(np.transpose(b), f), b)
+
+
 def idct(f: np.ndarray, n: int) -> np.ndarray:
     result = np.zeros(shape=f.shape)
     h, w = f.shape
@@ -69,6 +78,15 @@ def idct(f: np.ndarray, n: int) -> np.ndarray:
         for j in range(0, w, n):
             result[i:i + n, j:j + n] = np.dot(np.dot(b, f[i:i + 8, j:j + 8]), np.transpose(b))
     return result
+
+
+def idct_block(f: np.ndarray) -> np.ndarray:
+    h, w = f.shape[0:2]
+    if h != w:
+        raise Exception("error")
+    n = h
+    b = get_b(n)
+    return np.dot(np.dot(b, f), np.transpose(b))
 
 
 def bitfield(n: int, length: int = None) -> np.ndarray:
