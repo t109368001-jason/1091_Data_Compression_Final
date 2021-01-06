@@ -40,10 +40,14 @@ if __name__ == '__main__':
             h, w = img.shape[0:2]
             ori_bits = h * w * channel * 8
             n = 8
+            j = 4
+            a = 4
+            b = 0
+            jab = (j, a, b)
             jpeg_param = {
                 "n": n,
                 "is_gray": is_gray,
-                "jab": (4, 4, 4),
+                "jab": jab,
                 "resolution": (h, w)
             }
             algorithm_name = "JPEG"
@@ -54,7 +58,7 @@ if __name__ == '__main__':
                 image_file = Image.fromarray(np.dstack((img_, img_, img_)).astype(np.uint8))
             else:
                 image_file = Image.fromarray(img_.astype(np.uint8))
-            image_file.save(output_folder + "{}_{}_{}.bmp".format(image_name, algorithm_name, n))
+            image_file.save(output_folder + "{}_{}_{}_{}_{}_{}.bmp".format(image_name, algorithm_name, n, j, a, b))
             mse = np.mean(np.square(img - img_))
             psnr = 10 * np.log10(255 * 255 * channel / mse)
             hist, bins = np.histogram(img_, np.arange(257))
