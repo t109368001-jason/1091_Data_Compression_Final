@@ -407,19 +407,29 @@ def jpeg_encoding(img: np.ndarray, param: dict) -> (np.ndarray, np.ndarray):
     n = param["n"]
     is_gray = param["is_gray"]
     if is_gray:
-        level_offset = jpeg_level_offset(img=img)
-        dct = np.round(utils.dct(f=level_offset, n=n)).astype(int)
-        quantization = np.round(jpeg_quantization(dct=dct, n=n)).astype(int)
-        dpcm = jpeg_dpcm(quantization=quantization, n=n)
-        zigzag = jpeg_zigzag(quantization_ac=quantization, n=n)
-        run_length = jpeg_run_length(zigzag=zigzag).astype(int)
-        bitstream = jpeg_huffman(dpcm=dpcm, run_length=run_length)
-        # TODO
+        gray = np.copy(img)
+        gray = gray - 128
+        y_block = utils.img2block(img=gray, block_shape=(n, n))
+        y_dc_last: int = 0
+        bitstream = np.array([]).astype(int)
+        for ii in range(y_block.shape[0]):
+            for jj in range(y_block.shape[1]):
+                y_dct = jpeg_dct(y_block[ii, jj])
+                y_quant = jpeg_quant_y(y_dct)
+                y_dc, y_ac = jpeg_dc_ac(y_quant)
+                y_zigzag = jpeg_zigzag_block(y_ac)
+                y_run_length = jpeg_run_length_block(y_zigzag)
+                y_dpcm = y_dc - y_dc_last
+                y_dc_last = y_dc
+                y_dpcm_bits = jpeg_dc_encoding(y_dpcm)
+                y_ac_bits = jpeg_ac_encoding(y_run_length)
+                bitstream = np.append(bitstream, y_dpcm_bits)
+                bitstream = np.append(bitstream, y_ac_bits)
         return bitstream
     else:
-        ycbcr = np.round(utils.rgb2ycbcr(img=img))
-        ycbcr = ycbcr - 128
-        y, cb, cr = ycbcr[:, :, 0], ycbcr[:, :, 1], ycbcr[:, :, 2]
+        gray = np.round(utils.rgb2ycbcr(img=img))
+        gray = gray - 128
+        y, cb, cr = gray[:, :, 0], gray[:, :, 1], gray[:, :, 2]
         j, a, b = param["jab"]
         cb = jpeg_down_sampling(cb, j, a, b)
         cr = jpeg_down_sampling(cr, j, a, b)
@@ -476,15 +486,25 @@ def jpeg_decoding(bitstream: np.ndarray, param: dict) -> np.ndarray:
     m = param["m"]
     is_gray = param["is_gray"]
     if is_gray:
-        dpcm, run_length = ijpeg_huffman(bitstream=bitstream, n=n, m=m)
-        zigzag = ijpeg_run_length(run_length=run_length)
-        quantization_ac = ijpeg_zigzag(zigzag=zigzag, n=n)
-        quantization_dc = ijpeg_dpcm(dpcm=dpcm, n=n).astype(int)
-        quantization = quantization_ac + quantization_dc
-        dct = ijpeg_quantization(quantization=quantization, n=n).astype(int)
-        level_offset = utils.idct(f=dct, n=n).astype(int)
-        img = ijpeg_level_offset(level_offset=level_offset)
-        img = img.clip(0, 255)
+        h, w = param["resolution"]
+        h_m, w_m = int(h / n), int(w / n)
+        bitstream = bitstream
+        y_block = np.zeros(shape=(h_m, w_m, n, n))
+        y_dc_last = 0
+        for ii in range(h_m):
+            for jj in range(w_m):
+                y_dpcm, bitstream = jpeg_dc_decoding(bitstream)
+                y_run_length, bitstream = jpeg_ac_decoding(bitstream, n)
+                y_zigzag = ijpeg_run_length_block(y_run_length)
+                y_ac = ijpeg_zigazg_block(y_zigzag)
+                y_dc = y_dpcm + y_dc_last
+                y_quant = ijpeg_dc_ac(y_dc, y_ac)
+                y_dc_last = y_dc
+                y_dct = ijpeg_quant_y(y_quant)
+                y_block[ii, jj] = ijpeg_dct(y_dct)
+        y = utils.block2img(block=y_block)
+        gray = y + 128
+        img = gray.clip(0, 255).astype(int)
         return img
     else:
         h, w = param["resolution"]
