@@ -29,7 +29,8 @@ if __name__ == '__main__':
         "n": n,
         "m": (int(h / n)),
         "is_gray": False,
-        "jab": (4, 4, 4)
+        "jab": (4, 4, 4),
+        "resolution": (h, w)
     }
     algorithm_name = "JPEG"
     bitstream, img_, encoding_time, decoding_time = compression.perf(img=img, algorithm_name=algorithm_name,
